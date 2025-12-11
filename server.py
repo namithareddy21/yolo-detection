@@ -1,48 +1,37 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
+from pydantic import BaseModel
+import base64
+import cv2
+import numpy as np
 from ultralytics import YOLO
-from PIL import Image
-import io
 
 app = FastAPI()
-
-# ----- CORS FIX -----
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Load model
 model = YOLO("yolov8n.pt")
 
-@app.get("/")
-def home():
-    return {"status": "YOLOv8 API running"}
+class ImageData(BaseModel):
+    image: str
 
 @app.post("/detect")
-async def detect(file: UploadFile = File(...)):
-    image_bytes = await file.read()
-    image = Image.open(io.BytesIO(image_bytes))
+async def detect(data: ImageData):
+    img_bytes = base64.b64decode(data.image)
+    img_array = np.frombuffer(img_bytes, np.uint8)
+    frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-    results = model(image)[0]
+    results = model(frame)[0]
+
     detections = []
-
     for box in results.boxes:
-        x1, y1, x2, y2 = box.xyxy[0]
-        cls = int(box.cls[0])
-        conf = float(box.conf[0])
-
+        x1, y1, x2, y2 = box.xyxy[0].tolist()
+        label = results.names[int(box.cls)]
+        conf = float(box.conf)
         detections.append({
-            "x": int(x1),
-            "y": int(y1),
-            "width": int(x2 - x1),
-            "height": int(y2 - y1),
-            "class": model.names[cls],
-            "confidence": round(conf, 2)
+            "bbox": [x1, y1, x2, y2],
+            "label": label,
+            "confidence": conf,
+            "width": x2 - x1,
+            "height": y2 - y1
         })
 
-    return detections
+    return {"detections": detections}
+
 
