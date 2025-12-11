@@ -1,60 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>YOLOv8 Object Detection</title>
-  <style>
-    body { text-align:center; background:#111; color:white; }
-    video, canvas { width:60%; border-radius:10px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time YOLOv8 Detection</title>
+    <style>
+        body {
+            font-family: Arial;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #111;
+            color: #fff;
+        }
+        video, canvas {
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
 
-<h1>Real-time Object Detection (YOLOv8)</h1>
-
-<video id="video" autoplay></video>
-<canvas id="canvas"></canvas>
+<h2>Real-Time Object Detection (YOLOv8)</h2>
+<video id="video" width="640" height="480" autoplay></video>
+<canvas id="canvas" width="640" height="480"></canvas>
 
 <script>
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-canvas.width = 640;
-canvas.height = 480;
+// Your backend YOLOv8 URL
+const API_URL = "https://yolo-detection-1-mjos.onrender.com/detect";
 
-async function startCamera() {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+async function setupCamera() {
+    let stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
 }
 
-startCamera();
+async function sendFrameToBackend() {
+    const offscreen = document.createElement("canvas");
+    offscreen.width = video.videoWidth;
+    offscreen.height = video.videoHeight;
+    offscreen.getContext("2d").drawImage(video, 0, 0);
 
-const ws = new WebSocket("wss://YOUR-RENDER-URL/ws");
+    let blob = await new Promise(resolve => offscreen.toBlob(resolve, "image/jpeg"));
 
-ws.onopen = () => console.log("Connected to server");
+    let formData = new FormData();
+    formData.append("file", blob, "frame.jpg");
 
-ws.onmessage = (event) => {
-    const { detections } = JSON.parse(event.data);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    detections.forEach(d => {
-        ctx.strokeStyle = "lime";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(d.x1, d.y1, d.w, d.h);
-        ctx.fillStyle = "black";
-        ctx.fillText(`${d.label} ${Math.round(d.conf*100)}%`, d.x1, d.y1-5);
-    });
-};
+    try {
+        const res = await fetch(API_URL, { method: "POST", body: formData });
+        const data = await res.json();
 
-setInterval(() => {
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-    const tctx = tempCanvas.getContext("2d");
-    tctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    ws.send(JSON.stringify({ image: tempCanvas.toDataURL("image/jpeg") }));
-}, 150);
+        ctx.drawImage(video, 0, 0);
+
+        data.detections.forEach(det => {
+            let [x1, y1, x2, y2] = det.bbox;
+
+            // Box
+            ctx.strokeStyle = "#00FF00";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+            // Label
+            ctx.fillStyle = "yellow";
+            ctx.fillText(
+                `${det.label} (${det.confidence.toFixed(2)}) ${det.width}x${det.height}px`,
+                x1,
+                y1 > 10 ? y1 - 5 : 10
+            );
+        });
+
+    } catch (e) {
+        console.error("Backend error:", e);
+    }
+
+    requestAnimationFrame(sendFrameToBackend);
+}
+
+setupCamera().then(() => {
+    video.onloadeddata = () => sendFrameToBackend();
+});
 </script>
 
 </body>
 </html>
+
 
