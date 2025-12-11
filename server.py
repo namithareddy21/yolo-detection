@@ -1,26 +1,12 @@
-# server.py
-
-import base64
-import json
-import cv2
-import numpy as np
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+from PIL import Image
+import io
 
 app = FastAPI()
 
-# Allow any frontend to connect
+# ----- CORS FIX -----
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,55 +15,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load small GPU/CPU-compatible model
+# Load model
 model = YOLO("yolov8n.pt")
 
-
 @app.get("/")
-def root():
+def home():
     return {"status": "YOLOv8 API running"}
 
+@app.post("/detect")
+async def detect(file: UploadFile = File(...)):
+    image_bytes = await file.read()
+    image = Image.open(io.BytesIO(image_bytes))
 
-def decode_image(base64_string):
-    base64_string = base64_string.split(",")[1]  # remove header
-    img_bytes = base64.b64decode(base64_string)
-    img_array = np.frombuffer(img_bytes, np.uint8)
-    return cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    results = model(image)[0]
+    detections = []
 
+    for box in results.boxes:
+        x1, y1, x2, y2 = box.xyxy[0]
+        cls = int(box.cls[0])
+        conf = float(box.conf[0])
 
-@app.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket):
-    await ws.accept()
-    print("Client connected.")
+        detections.append({
+            "x": int(x1),
+            "y": int(y1),
+            "width": int(x2 - x1),
+            "height": int(y2 - y1),
+            "class": model.names[cls],
+            "confidence": round(conf, 2)
+        })
 
-    try:
-        while True:
-            data = await ws.receive_text()
-            data = json.loads(data)
+    return detections
 
-            img = decode_image(data["image"])
-
-            results = model(img, verbose=False)[0]
-
-            detections = []
-            for box in results.boxes:
-                x1, y1, x2, y2 = box.xyxy[0].tolist()
-                conf = float(box.conf[0])
-                cls = int(box.cls[0])
-                label = model.names[cls]
-
-                detections.append({
-                    "x1": x1,
-                    "y1": y1,
-                    "x2": x2,
-                    "y2": y2,
-                    "w": x2 - x1,
-                    "h": y2 - y1,
-                    "conf": conf,
-                    "label": label
-                })
-
-            await ws.send_text(json.dumps({"detections": detections}))
-
-    except WebSocketDisconnect:
-        print("Client disconnected.")
