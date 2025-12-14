@@ -423,8 +423,8 @@
         ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
         ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-        const text1 = '${label} ${(score * 100).toFixed(1)}%';
-        const text2 = '${widthPx}×${heightPx}px';
+        const text1 = `${label} ${(score * 100).toFixed(1)}%`;
+        const text2 = `${widthPx}×${heightPx}px`;
         const textWidth1 = ctx.measureText(text1).width;
         const textWidth2 = ctx.measureText(text2).width;
         const textWidth = Math.max(textWidth1, textWidth2) + 10;
