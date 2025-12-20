@@ -18,7 +18,7 @@ def index():
     """
     Renders the main HTML page.
     """
-    return render_template('index.html')
+    return render_template('home.html')
 
 if __name__ == '__main__':
     # Running locally uses Flask's built-in server.
