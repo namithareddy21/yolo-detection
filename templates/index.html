@@ -4,80 +4,56 @@
 <meta charset="UTF-8">
 <title>Real-Time Object Detection</title>
 
-<!-- TensorFlow.js -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: linear-gradient(to bottom, #f0f7fa, #e6f2f1);
-        text-align: center;
-        margin: 0;
-        padding: 20px;
-    }
-
-    h1 {
-        letter-spacing: 4px;
-        color: #2c3e50;
-    }
-
-    .controls {
-        margin: 20px 0;
-    }
-
-    button {
-        padding: 12px 25px;
-        border: none;
-        border-radius: 25px;
-        margin: 0 10px;
-        background: #67c3a6;
-        color: white;
-        font-size: 16px;
-        cursor: pointer;
-    }
-
-    button:hover {
-        background: #4ea58b;
-    }
-
-    .container {
-        display: flex;
-        justify-content: center;
-        gap: 30px;
-        margin-top: 30px;
-    }
-
-    .box {
-        background: white;
-        width: 420px;
-        height: 350px;
-        border-radius: 20px;
-        padding: 10px;
-        box-shadow: 0 0 20px rgba(0,0,0,0.1);
-    }
-
-    video, canvas {
-        width: 100%;
-        height: 260px;
-        border-radius: 10px;
-    }
-
-    .info {
-        margin-top: 30px;
-        background: white;
-        padding: 15px;
-        width: 900px;
-        margin-left: auto;
-        margin-right: auto;
-        border-radius: 15px;
-        box-shadow: 0 0 15px rgba(0,0,0,0.1);
-        text-align: left;
-    }
-
-    ul {
-        padding-left: 20px;
-    }
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(to bottom, #f0f7fa, #e6f2f1);
+    text-align: center;
+    padding: 20px;
+}
+h1 {
+    letter-spacing: 4px;
+    color: #2c3e50;
+}
+.controls { margin: 20px; }
+button {
+    padding: 12px 25px;
+    border-radius: 25px;
+    border: none;
+    background: #67c3a6;
+    color: white;
+    margin: 5px;
+    cursor: pointer;
+}
+.container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+.box {
+    background: white;
+    width: 420px;
+    height: 350px;
+    border-radius: 20px;
+    padding: 10px;
+}
+video, canvas {
+    width: 100%;
+    height: 260px;
+    border-radius: 10px;
+}
+.info {
+    margin-top: 20px;
+    background: white;
+    padding: 15px;
+    width: 900px;
+    margin: auto;
+    border-radius: 15px;
+    text-align: left;
+}
 </style>
 </head>
 
@@ -91,13 +67,10 @@
 </div>
 
 <div class="container">
-    <!-- INPUT -->
     <div class="box">
         <h3>Input (Camera)</h3>
-        <video id="video" autoplay muted></video>
+        <video id="video" autoplay muted playsinline></video>
     </div>
-
-    <!-- OUTPUT -->
     <div class="box">
         <h3>Output (Detected Objects)</h3>
         <canvas id="canvas"></canvas>
@@ -106,8 +79,8 @@
 
 <div class="info">
     <p><strong>Object Count:</strong> <span id="count">0</span></p>
-    <p><strong>Detected Objects Description:</strong></p>
-    <ul id="objectList"></ul>
+    <p><strong>Detected Objects:</strong></p>
+    <ul id="list"></ul>
 </div>
 
 <script>
@@ -117,21 +90,26 @@ const ctx = canvas.getContext("2d");
 
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
-
 const countSpan = document.getElementById("count");
-const objectList = document.getElementById("objectList");
+const list = document.getElementById("list");
 
-let model;
-let stream;
+let model = null;
+let stream = null;
 let detecting = false;
 
-// Start Camera
+// Load Model
+async function loadModel() {
+    model = await cocoSsd.load();
+    console.log("Model Loaded");
+}
+
+// Start Camera SAFELY
 async function startCamera() {
     stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
 
     return new Promise(resolve => {
-        video.onloadedmetadata = () => {
+        video.onloadeddata = () => {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             resolve();
@@ -139,73 +117,64 @@ async function startCamera() {
     });
 }
 
-// Load ML Model
-async function loadModel() {
-    model = await cocoSsd.load();
-    console.log("COCO-SSD Model Loaded");
-}
-
 // Detection Loop
-async function detectObjects() {
+async function detect() {
     if (!detecting) return;
+
+    // SAFETY CHECK
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+        requestAnimationFrame(detect);
+        return;
+    }
 
     const predictions = await model.detect(video);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    objectList.innerHTML = "";
+    list.innerHTML = "";
     countSpan.innerText = predictions.length;
 
-    predictions.forEach((obj, index) => {
-        const [x, y, width, height] = obj.bbox;
+    predictions.forEach((p, i) => {
+        const [x, y, w, h] = p.bbox;
 
-        // Draw bounding box
-        ctx.strokeStyle = "#00FF00";
+        ctx.strokeStyle = "lime";
         ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, width, height);
+        ctx.strokeRect(x, y, w, h);
 
-        // Draw label
-        ctx.fillStyle = "#00FF00";
-        ctx.font = "14px Arial";
+        ctx.fillStyle = "lime";
         ctx.fillText(
-            `${obj.class} (${(obj.score * 100).toFixed(1)}%)`,
-            x,
-            y > 10 ? y - 5 : 10
+            `${p.class} (${(p.score*100).toFixed(1)}%)`,
+            x, y > 10 ? y - 5 : 10
         );
 
-        // Object description
         const li = document.createElement("li");
         li.innerHTML = `
-            <strong>${index + 1}. ${obj.class}</strong><br>
-            Confidence: ${(obj.score * 100).toFixed(1)}%<br>
-            Dimensions: ${Math.round(width)} × ${Math.round(height)} pixels<br>
-            Description: A ${obj.class} detected in the camera view.
+            <b>${i+1}. ${p.class}</b><br>
+            Confidence: ${(p.score*100).toFixed(1)}%<br>
+            Size: ${Math.round(w)} × ${Math.round(h)} px
         `;
-        objectList.appendChild(li);
+        list.appendChild(li);
     });
 
-    requestAnimationFrame(detectObjects);
+    requestAnimationFrame(detect);
 }
 
-// Start Detection
+// Start
 startBtn.onclick = async () => {
     if (!model) await loadModel();
     await startCamera();
     detecting = true;
-    detectObjects();
+    detect();
 };
 
-// Stop Detection
+// Stop
 stopBtn.onclick = () => {
     detecting = false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     countSpan.innerText = 0;
-    objectList.innerHTML = "";
-
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-    }
+    list.innerHTML = "";
+    if (stream) stream.getTracks().forEach(t => t.stop());
 };
 </script>
 
