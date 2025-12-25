@@ -54,7 +54,7 @@
             flex: 1;
             width: 420px; height: 420px; min-width: 420px;
             position: relative;
-            border-radius: 20px; background: rgba(0, 0, 0, 1);
+            border-radius: 20px; background: #000;
             border: 1.5px solid rgba(132, 196, 191, 0.7);
             box-shadow: 0 12px 40px rgba(95, 178, 167, 0.26);
             backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -62,7 +62,7 @@
             transition: box-shadow 0.3s ease, border-color 0.3s ease;
             touch-action: manipulation;
         }
-        .box::before { content: none; } /* no overlay icon */
+        .box::before { content: none; }
 
         video, canvas {
             width: 100%; height: 100%; border-radius: 18px;
@@ -129,7 +129,6 @@
     </div>
 
     <script>
-        console.log('JS file loaded');
         const startBtn = document.getElementById('start');
         const stopBtn = document.getElementById('stop');
         const video = document.getElementById('video');
@@ -244,7 +243,7 @@
             if (!session) {
                 try {
                     session = await ort.InferenceSession.create(
-                        'static/yolov8n.onnx',          // adjust path if needed
+                        'static/yolov8n.onnx',
                         { executionProviders: ['wasm'] }
                     );
                     console.log('YOLOv8 model loaded');
@@ -280,7 +279,7 @@
                 const key = Object.keys(outputMap)[0];
                 const out = outputMap[key];
                 const dets = postprocessFlexible(out);
-                console.log('detections:', dets); // debug
+                console.log('raw detections:', dets);
                 return dets;
             } catch (e) {
                 console.error('Detect error:', e);
@@ -302,12 +301,12 @@
                 const numPred = 8400;
                 for (let i = 0; i < numPred; i++) {
                     const cx = data[i];
-                    const cy = data[numPred + i];
-                    const w = data[2 * numPred + i];
-                    const h = data[3 * numPred + i];
+                    const cy = data[8400 + i];
+                    const w = data[2 * 8400 + i];
+                    const h = data[3 * 8400 + i];
                     let bestScore = 0, bestId = -1;
                     for (let c = 0; c < numClasses; c++) {
-                        const s = data[4 * numPred + c * numPred + i];
+                        const s = data[4 * 8400 + c * 8400 + i];
                         if (s > bestScore) { bestScore = s; bestId = c; }
                     }
                     pushDet(detections, cx, cy, w, h, bestScore, bestId, confThreshold);
@@ -402,11 +401,11 @@
             video.srcObject = stream;
             await video.play();
 
-            // ensure metadata is loaded
             await new Promise(resolve => {
                 if (video.videoWidth) return resolve();
                 video.onloadedmetadata = () => resolve();
             });
+            console.log('video size:', video.videoWidth, video.videoHeight);
 
             canvas.width = 420;
             canvas.height = 420;
@@ -418,7 +417,26 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            const detections = await detect();
+            // DEBUG: show what model sees, once
+            if (!window.__debug_frame) {
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png');
+                img.style.position = 'fixed';
+                img.style.right = '10px';
+                img.style.bottom = '10px';
+                img.style.width = '160px';
+                img.style.border = '2px solid red';
+                document.body.appendChild(img);
+                window.__debug_frame = true;
+            }
+
+            let detections = await detect();
+
+            // simple rule: if only one traffic light with ~50% on dark frame, ignore
+            if (detections.length === 1 && detections[0].label === 'traffic light' && detections[0].score < 0.7) {
+                detections = [];
+            }
+
             updateResultsPanel(detections);
 
             ctx.lineWidth = 3;
@@ -472,3 +490,4 @@
     </script>
 </body>
 </html>
+
