@@ -2,91 +2,256 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>YOLOv8 Real-Time Object Detection</title>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.0/dist/ort.min.js"></script>
   <style>
-    *, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
-      justify-content: flex-start; padding: 60px 20px 40px 20px; color: #4a4a4a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      min-height: 100vh;
+      height: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 60px 20px 40px 20px;
+      color: #4a4a4a;
       background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
-      overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      position: relative;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: -15%;
+      left: -20%;
+      width: 150%;
+      height: 140%;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255, 206, 150, 0.4), transparent 60%),
+        radial-gradient(circle at 75% 75%, rgba(179, 206, 255, 0.3), transparent 70%),
+        radial-gradient(circle at 20% 80%, rgba(189, 243, 179, 0.25), transparent 70%);
+      filter: blur(120px);
+      z-index: -1;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        repeating-radial-gradient(circle at center, rgba(0,0,0,0.005) 0 2px, transparent 3px 5px),
+        radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 3px);
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0.2;
+    }
+
     h1 {
-      font-size: 2.8rem; font-weight: 700; color: #334e68; margin-bottom: 1rem; text-align: center;
-      letter-spacing: 0.12em; text-transform: uppercase;
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: #334e68;
+      margin-bottom: 1rem;
+      text-align: center;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-shadow: 0 4px 12px rgba(255, 255, 255, 0.9);
     }
-    .controls { text-align: center; margin-bottom: 24px; }
+
+    .controls {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
     button {
-      background: linear-gradient(135deg, #86c8bc, #52b69a); color: #f0f4f8; border: none;
-      border-radius: 999px; padding: 10px 24px; font-size: 1rem; font-weight: 600;
-      margin: 0 6px; cursor: pointer;
+      background: linear-gradient(135deg, #86c8bc, #52b69a);
+      color: #f0f4f8;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 6px;
+      transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(82, 182, 154, 0.6);
+      letter-spacing: 0.04em;
+      touch-action: manipulation;
     }
+
+    button:hover {
+      background: linear-gradient(135deg, #52b69a, #38a3a5);
+      box-shadow: 0 9px 32px rgba(56, 163, 165, 0.75);
+      transform: translateY(-2px) scale(1.05);
+    }
+
+    button:active {
+      transform: translateY(2px) scale(0.98);
+      box-shadow: 0 4px 12px rgba(82, 182, 154, 0.45);
+    }
+
     .main-content {
-      display: flex; flex-direction: row; gap: 28px; justify-content: center;
-      align-items: flex-start; padding: 0 30px; width: 100%; max-width: 960px;
+      display: flex;
+      flex-direction: row;
+      gap: 28px;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 0 30px;
+      width: 100%;
+      max-width: 960px;
     }
+
     .box {
-      flex: 1 1 390px; aspect-ratio: 1/1; min-width: 300px; position: relative;
-      margin-bottom: 10px; border-radius: 20px; background: #000;
-      display: flex; align-items: center; justify-content: center; overflow: hidden;
+      flex: 1 1 390px;
+      aspect-ratio: 1/1;
+      min-width: 300px;
+      position: relative;
+      margin-bottom: 30px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.75);
+      border: 1.5px solid rgba(132, 196, 191, 0.7);
+      box-shadow:
+        0 12px 40px rgba(95, 178, 167, 0.26);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      touch-action: manipulation;
     }
-    video, canvas {
-      width: 100%; height: 100%; border-radius: 18px; object-fit: cover;
-      position: relative; z-index: 1;
+
+    .box::before {
+      content: "";
+      position: absolute;
+      inset: 1.5px;
+      border-radius: 18px;
+      background: linear-gradient(
+          145deg,
+          rgba(255, 255, 255, 0.85),
+          rgba(255, 255, 255, 0.6)
+        );
+      mix-blend-mode: screen;
+      pointer-events: none;
     }
-    .summary-wrapper {
-      margin-top: 16px; width: 100%; max-width: 960px;
-      background: rgba(255,255,255,0.9); border-radius: 16px;
-      padding: 16px 20px;
+
+    .box:hover {
+      transform: translateY(-3px);
+      border-color: rgba(82, 182, 154, 0.9);
+      box-shadow:
+        0 22px 48px rgba(56, 163, 165, 0.42);
     }
-    .summary-header { font-weight: 700; font-size: 1.1rem; margin-bottom: 4px; }
-    .summary-count { font-weight: 600; color: #1f6f8b; margin-bottom: 8px; }
-    .summary-list { font-size: 0.95rem; max-height: 140px; overflow-y: auto; }
-    .summary-item { margin-bottom: 3px; }
-    footer { margin-top: 24px; text-align: center; font-size: 0.92rem; color: #6e7e85; }
+
+    video,
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 18px;
+      object-fit: cover;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 2px 14px rgba(82, 182, 154, 0.2);
+      touch-action: none;
+    }
+
+    footer {
+      margin-top: 36px;
+      text-align: center;
+      font-size: 0.92rem;
+      color: #6e7e85;
+      letter-spacing: 0.1em;
+      font-weight: 500;
+      padding-bottom: 20px;
+    }
+
     @media (max-width: 900px) {
-      .main-content { flex-direction: column; align-items: center; gap: 20px; padding: 0 10px; }
-      .box { max-width: 94vw; aspect-ratio: 4/3; flex: none; }
+      .main-content {
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        padding: 0 10px;
+      }
+      .box {
+        max-width: 94vw;
+        min-width: unset;
+        aspect-ratio: 4/3;
+        flex: none;
+      }
+      h1 {
+        font-size: 2.2rem;
+        letter-spacing: 0.1em;
+      }
+      body {
+        padding: 40px 20px 40px 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding-top: 30px;
+      }
+      button {
+        margin: 4px;
+        width: 46%;
+        padding: 12px 20px;
+        font-size: 1.1rem;
+      }
+      h1 {
+        font-size: 1.8rem;
+      }
+      .controls {
+        margin-bottom: 24px;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>REAL-TIME OBJECT DETECTION</h1>
-
+  <h1> REAL-TIME OBJECT DETECTION</h1>
   <div class="controls">
     <button id="start">Start Detection</button>
     <button id="stop">Stop Detection</button>
   </div>
-
   <div class="main-content">
-    <div class="box"><video id="video" autoplay playsinline muted></video></div>
-    <div class="box"><canvas id="canvas"></canvas></div>
+    <div class="box" id="input-cam">
+      <video id="video" autoplay playsinline muted></video>
+    </div>
+    <div class="box" id="output-cam">
+      <canvas id="canvas"></canvas>
+    </div>
   </div>
-
-  <div class="summary-wrapper">
-    <div class="summary-header">Detection Summary</div>
-    <div id="summary-count" class="summary-count">No objects detected yet.</div>
-    <div id="summary-list" class="summary-list"></div>
-  </div>
-
-  <footer>&copy; 2025 YOLOv8 Detection Demo</footer>
+  <footer>
+    &copy; 2025 YOLOv8 Detection Demo
+  </footer>
 
   <script>
+    console.log('JS file loaded');
+
     const startBtn = document.getElementById('start');
     const stopBtn = document.getElementById('stop');
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    const summaryCountEl = document.getElementById('summary-count');
-    const summaryListEl = document.getElementById('summary-list');
+    let stream = null;
+    let running = false;
+    let rafId = null;
+    let session = null;
+    let isDetecting = false;
 
-    let stream = null, running = false, rafId = null, session = null, isDetecting = false;
-
-    const COCOCLASSES = ['person','bicycle','car','motorcycle','airplane','bus','train','truck','boat','traffic light',
+    const COCO_CLASSES = [
+      'person','bicycle','car','motorcycle','airplane','bus','train','truck','boat','traffic light',
       'fire hydrant','stop sign','parking meter','bench','bird','cat','dog','horse','sheep','cow',
       'elephant','bear','zebra','giraffe','backpack','umbrella','handbag','tie','suitcase','frisbee',
       'skis','snowboard','sports ball','kite','baseball bat','baseball glove','skateboard','surfboard',
@@ -94,25 +259,31 @@
       'sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','chair','couch',
       'potted plant','bed','dining table','toilet','tv','laptop','mouse','remote','keyboard','cell phone',
       'microwave','oven','toaster','sink','refrigerator','book','clock','vase','scissors','teddy bear',
-      'hair drier','toothbrush'];
+      'hair drier','toothbrush'
+    ];
 
-    const OBJECT_DESCRIPTIONS = { /* same mapping as previous message */ };
-
-    async function initModel() {
-      if (!session) {
-        session = await ort.InferenceSession.create('/static/yolov8n.onnx', {
-          executionProviders: ['wasm']
-        });
-        console.log('YOLOv8 model loaded');
-      }
+   async function initModel() {
+  if (!session) {
+    try {
+      session = await ort.InferenceSession.create('/static/yolov8n.onnx', {
+        executionProviders: ['wasm']
+      });
+      console.log('YOLOv8 model loaded');
+    } catch (e) {
+      console.error('Error loading YOLOv8 model:', e);
+      alert('Model load error: ' + (e.message || JSON.stringify(e)));
     }
+  }
+}
+
 
     function preprocessFrame() {
-      const tmp = document.createElement('canvas');
-      tmp.width = tmp.height = 640;
-      const tctx = tmp.getContext('2d');
-      tctx.drawImage(video, 0, 0, 640, 640);
-      const { data } = tctx.getImageData(0, 0, 640, 640);
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = tempCanvas.height = 640;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(video, 0, 0, 640, 640);
+      const imageData = tempCtx.getImageData(0, 0, 640, 640);
+      const data = imageData.data;
       const input = new Float32Array(3 * 640 * 640);
       for (let i = 0, j = 0; i < data.length; i += 4, j++) {
         input[j] = data[i] / 255;
@@ -126,168 +297,172 @@
       if (isDetecting || !session) return [];
       isDetecting = true;
       try {
-        const tensor = new ort.Tensor('float32', preprocessFrame(), [1,3,640,640]);
-        const outMap = await session.run({ images: tensor });
-        const key = Object.keys(outMap)[0];
-        return postprocess(outMap[key]);
+        const inputTensor = new ort.Tensor('float32', preprocessFrame(), [1, 3, 640, 640]);
+        const outputMap = await session.run({ images: inputTensor });
+        const key = Object.keys(outputMap)[0];
+        const out = outputMap[key];
+        console.log('Output dims:', out.dims);
+        return postprocessFlexible(out);
       } catch (e) {
-        console.error('detect error', e);
+        console.error('Detect error:', e);
         return [];
-      } finally { isDetecting = false; }
+      } finally {
+        isDetecting = false;
+      }
     }
 
-    function postprocess(out) {
-      const numClasses = COCOCLASSES.length;
+    function postprocessFlexible(out) {
+      const numClasses = COCO_CLASSES.length;
       const dims = out.dims;
       const data = out.data;
-      const confT = 0.25, iouT = 0.5;
-      const dets = [];
+      const detections = [];
+      const confThreshold = 0.3;
+      const iouThreshold = 0.5;
 
       if (dims[1] === 84 && dims[2] === 8400) {
-        const n = 8400;
-        for (let i=0;i<n;i++) {
-          const cx = data[i], cy = data[n+i], w = data[2*n+i], h = data[3*n+i];
-          let best=0, id=-1;
-          for (let c=0;c<numClasses;c++) {
-            const s = data[4*n + c*n + i];
-            if (s>best){best=s;id=c;}
+        const numPred = 8400;
+        for (let i = 0; i < numPred; i++) {
+          const cx = data[i];
+          const cy = data[numPred + i];
+          const w  = data[2*numPred + i];
+          const h  = data[3*numPred + i];
+          let bestScore = 0, bestId = -1;
+          for (let c = 0; c < numClasses; c++) {
+            const s = data[(4 + c) * numPred + i];
+            if (s > bestScore) { bestScore = s; bestId = c; }
           }
-          pushDet(dets,cx,cy,w,h,best,id,confT);
+          pushDet(detections, cx, cy, w, h, bestScore, bestId, confThreshold);
         }
       } else if (dims[1] === 8400 && dims[2] === 84) {
-        const n = 8400;
-        for (let i=0;i<n;i++) {
-          const off = i*84;
-          const cx = data[off], cy = data[off+1], w = data[off+2], h = data[off+3];
-          let best=0,id=-1;
-          for (let c=0;c<numClasses;c++) {
-            const s = data[off+4+c];
-            if (s>best){best=s;id=c;}
+        const numPred = 8400;
+        for (let i = 0; i < numPred; i++) {
+          const offset = i * 84;
+          const cx = data[offset + 0];
+          const cy = data[offset + 1];
+          const w  = data[offset + 2];
+          const h  = data[offset + 3];
+          let bestScore = 0, bestId = -1;
+          for (let c = 0; c < numClasses; c++) {
+            const s = data[offset + 4 + c];
+            if (s > bestScore) { bestScore = s; bestId = c; }
           }
-          pushDet(dets,cx,cy,w,h,best,id,confT);
+          pushDet(detections, cx, cy, w, h, bestScore, bestId, confThreshold);
+        }
+      } else {
+        console.warn('Unexpected output shape', dims);
+        return [];
+      }
+
+      detections.sort((a, b) => b.score - a.score);
+      const result = [];
+      for (const det of detections) {
+        if (result.every(r => iou(r, det) < iouThreshold)) {
+          result.push(det);
         }
       }
-
-      dets.sort((a,b)=>b.score-a.score);
-      const res=[];
-      for (const d of dets){
-        if(res.every(r=>iou(r,d)<iouT)) res.push(d);
-      }
-      return res.slice(0,20);
+      console.log('Detections after NMS:', result.length);
+      return result.slice(0, 20);
     }
 
-    function pushDet(list,cx,cy,w,h,score,classId,thr){
-      if(score<thr || classId<0) return;
-      const MODEL_W=640, MODEL_H=640;
-      const scaleX = canvas.width / MODEL_W;
-      const scaleY = canvas.height / MODEL_H;
-      const x1=(cx-w/2)*scaleX, y1=(cy-h/2)*scaleY;
-      const x2=(cx+w/2)*scaleX, y2=(cy+h/2)*scaleY;
-      list.push({x1,y1,x2,y2,label:COCOCLASSES[classId],score,
-        widthPx:Math.round(x2-x1),heightPx:Math.round(y2-y1)});
+    function pushDet(list, cx, cy, w, h, score, classId, confThreshold) {
+      if (score < confThreshold || classId < 0) return;
+      const scaleX = canvas.width / 640;
+      const scaleY = canvas.height / 640;
+      const x1 = (cx - w/2) * scaleX;
+      const y1 = (cy - h/2) * scaleY;
+      const x2 = (cx + w/2) * scaleX;
+      const y2 = (cy + h/2) * scaleY;
+      list.push({
+        x1, y1, x2, y2,
+        label: COCO_CLASSES[classId],
+        score,
+        widthPx: Math.round(x2 - x1),
+        heightPx: Math.round(y2 - y1)
+      });
     }
 
-    function iou(a,b){
-      const x1=Math.max(a.x1,b.x1), y1=Math.max(a.y1,b.y1);
-      const x2=Math.min(a.x2,b.x2), y2=Math.min(a.y2,b.y2);
-      const inter=Math.max(0,x2-x1)*Math.max(0,y2-y1);
-      const areaA=(a.x2-a.x1)*(a.y2-a.y1);
-      const areaB=(b.x2-b.x1)*(b.y2-b.y1);
-      return inter===0?0:inter/(areaA+areaB-inter+1e-6);
+    function iou(a, b) {
+      const x1 = Math.max(a.x1, b.x1);
+      const y1 = Math.max(a.y1, b.y1);
+      const x2 = Math.min(a.x2, b.x2);
+      const y2 = Math.min(a.y2, b.y2);
+      const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+      const areaA = (a.x2 - a.x1) * (a.y2 - a.y1);
+      const areaB = (b.x2 - b.x1) * (b.y2 - b.y1);
+      return inter <= 0 ? 0 : inter / (areaA + areaB - inter + 1e-6);
     }
 
-    async function startCamera(){
-      const constraints={video:true,audio:false};
+    async function startCamera() {
+      const constraints = { video: true, audio: false };
+      console.log('Requesting getUserMedia with', constraints);
       stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('getUserMedia success, tracks:', stream.getTracks().length);
       video.srcObject = stream;
-      await new Promise(res => video.onloadedmetadata = res);
       await video.play();
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       await initModel();
     }
 
-    async function loop(){
-      if(!running) return;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      const dets = await detect();
-      const count = dets.length;
+    async function loop() {
+      if (!running) return;
 
-      // summary
-      if(!count){
-        summaryCountEl.textContent='No objects detected.';
-        summaryListEl.innerHTML='';
-      } else {
-        summaryCountEl.textContent=`${count} object(s) detected.`;
-        const agg={};
-        dets.forEach(d=>agg[d.label]=(agg[d.label]||0)+1);
-        summaryListEl.innerHTML = Object.entries(agg).map(([label,c])=>{
-          const desc = OBJECT_DESCRIPTIONS[label] || 'Detected object';
-          return `<div class="summary-item">${c}× <strong>${label}</strong> — ${desc}</div>`;
-        }).join('');
-      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // boxes
-      dets.forEach(d=>{
-        const {x1,y1,x2,y2,label,score,widthPx,heightPx}=d;
-        const desc = OBJECT_DESCRIPTIONS[label] || 'Detected object';
+      const detections = await detect();
+      console.log('detections array length:', detections.length);
 
-        ctx.lineWidth=3;
-        ctx.strokeStyle='rgba(82,182,154,0.9)';
-        ctx.fillStyle='rgba(82,182,154,0.25)';
-        ctx.fillRect(x1,y1,x2-x1,y2-y1);
-        ctx.strokeRect(x1,y1,x2-x1,y2-y1);
+      ctx.lineWidth = 3;
+      ctx.font = '20px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
 
-        const labelText = `${label} ${(score*100).toFixed(1)}%`;
-        ctx.font='16px Segoe UI';
-        const labelWidth = ctx.measureText(labelText).width+10;
-        ctx.fillStyle='rgba(82,182,154,0.95)';
-        ctx.fillRect(x1,y1-40,labelWidth,20);
-        ctx.fillStyle='#fff';
-        ctx.fillText(labelText,x1+5,y1-25);
+      detections.forEach(det => {
+        const { x1, y1, x2, y2, label, score, widthPx, heightPx } = det;
+        ctx.strokeStyle = 'rgba(82, 182, 154, 0.9)';
+        ctx.fillStyle = 'rgba(82, 182, 154, 0.35)';
+        ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-        ctx.font='13px Segoe UI';
-        const descWidth = ctx.measureText(desc).width+10;
-        ctx.fillStyle='rgba(51,110,123,0.95)';
-        ctx.fillRect(x1,y1-20,Math.max(labelWidth,descWidth),18);
-        ctx.fillStyle='#f0f8ff';
-        ctx.fillText(desc,x1+5,y1-7);
+        const text1 = `${label} ${(score * 100).toFixed(1)}%`;
+        const text2 = `${widthPx}×${heightPx}px`;
+        const textWidth1 = ctx.measureText(text1).width;
+        const textWidth2 = ctx.measureText(text2).width;
+        const textWidth = Math.max(textWidth1, textWidth2) + 10;
 
-        const sizeText = `${widthPx}×${heightPx}px`;
-        ctx.font='12px Segoe UI';
-        const sizeWidth = ctx.measureText(sizeText).width+8;
-        ctx.fillStyle='rgba(82,182,154,0.9)';
-        ctx.fillRect(x1,y2+2,sizeWidth,16);
-        ctx.fillStyle='#fff';
-        ctx.fillText(sizeText,x1+4,y2+14);
+        ctx.fillStyle = 'rgba(82, 182, 154, 0.95)';
+        ctx.fillRect(x1, y1 - 45, textWidth, 40);
+
+        ctx.fillStyle = '#fff';
+        ctx.fillText(text1, x1 + 6, y1 - 28);
+        ctx.font = '16px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+        ctx.fillText(text2, x1 + 6, y1 - 12);
       });
 
       rafId = requestAnimationFrame(loop);
     }
 
-    startBtn.onclick = async ()=>{
-      if(running) return;
-      try{
+    startBtn.onclick = async () => {
+      if (running) return;
+      try {
         await startCamera();
-        running=true;
+        running = true;
         loop();
-      }catch(e){
-        console.error(e);
-        alert('Camera error: '+e.message);
+      } catch (error) {
+        console.error('getUserMedia error object:', error);
+        if (error && (error.name || error.message)) {
+          alert('Error accessing webcam: ' + (error.name || error.message));
+        }
       }
     };
 
-    stopBtn.onclick = ()=>{
-      running=false;
-      if(rafId) cancelAnimationFrame(rafId);
-      if(stream){
-        stream.getTracks().forEach(t=>t.stop());
-        stream=null;
+    stopBtn.onclick = () => {
+      running = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
       }
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      summaryCountEl.textContent='Detection stopped.';
-      summaryListEl.innerHTML='';
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
   </script>
 </body>
