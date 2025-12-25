@@ -152,12 +152,11 @@ function preprocess() {
   const img = imgData.data;
 
   const input = new Float32Array(3 * 640 * 640);
-  // Normalize and convert to CHW format
   let index = 0;
   for (let i = 0; i < img.length; i += 4) {
-    input[index++] = img[i] / 255;     // R
-    input[index++] = img[i + 1] / 255; // G
-    input[index++] = img[i + 2] / 255; // B
+    input[index++] = img[i] / 255;
+    input[index++] = img[i + 1] / 255;
+    input[index++] = img[i + 2] / 255;
   }
   return input;
 }
@@ -165,29 +164,33 @@ function preprocess() {
 async function detect() {
   if (detecting || !session) return [];
   detecting = true;
-
   try {
     const inputTensor = new ort.Tensor("float32", preprocess(), [1, 3, 640, 640]);
     const output = await session.run({ images: inputTensor });
-    const outputData = output[Object.keys(output)[0]].data;
-    const shape = output[Object.keys(output)[0]].shape;
-    console.log("Model output shape:", shape);
-    console.log("Output data sample:", outputData.slice(0, 20));
+    const outputTensorKey = Object.keys(output)[0];
+    const outputTensor = output[outputTensorKey];
 
-    // Parse detections based on model's output shape
-    // Note: You need to adapt this part based on your model's actual output shape
+    // Log shape and data for debugging
+    console.log('Output shape:', outputTensor.shape);
+    console.log('Output data sample:', outputTensor.data.slice(0, 50));
+
+    const shape = outputTensor.shape;
+    const data = outputTensor.data;
+
     const results = [];
-    const numDetections = shape[1]; // e.g., 8400 detections
-    for (let i = 0; i < numDetections; i++) {
-      const offset = i * shape[2]; // shape[2] is number of attributes per detection
-      const [cx, cy, w, h, score, classId] = outputData.slice(offset, offset + 6);
-      
-      if (score > 0.4 && classId >= 0 && classId < COCO_CLASSES.length) {
+    const detectionsCount = shape[1]; // Number of detections
+    const attrCount = shape[2]; // Attributes per detection
+
+    for (let i = 0; i < detectionsCount; i++) {
+      const offset = i * attrCount;
+      const [cx, cy, w, h, confidence, classId] = data.slice(offset, offset + attrCount);
+
+      if (confidence > 0.4 && classId >= 0 && classId < COCO_CLASSES.length) {
         const x = (cx - w / 2) * canvas.width;
         const y = (cy - h / 2) * canvas.height;
         const width = w * canvas.width;
         const height = h * canvas.height;
-        results.push({ x, y, w: width, h: height, label: COCO_CLASSES[Math.round(classId)], score });
+        results.push({ x, y, w: width, h: height, label: COCO_CLASSES[Math.round(classId)], score: confidence });
       }
     }
     return results;
