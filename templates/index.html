@@ -102,7 +102,7 @@ let rafId = null;
 let session = null;
 let detecting = false;
 
-// Load the COCO class labels
+// COCO classes
 const COCO_CLASSES = [
   'person','bicycle','car','motorcycle','airplane','bus','train','truck','boat',
   'traffic light','fire hydrant','stop sign','parking meter','bench','bird','cat',
@@ -170,17 +170,25 @@ async function detect() {
     const outputTensorKey = Object.keys(output)[0];
     const outputTensor = output[outputTensorKey];
 
-    // Log shape and data for debugging
+    // Log shape and sample data for debugging
     console.log('Output shape:', outputTensor.shape);
     console.log('Output data sample:', outputTensor.data.slice(0, 50));
 
     const shape = outputTensor.shape;
     const data = outputTensor.data;
 
-    const results = [];
-    const detectionsCount = shape[1]; // Number of detections
-    const attrCount = shape[2]; // Attributes per detection
+    if (!shape || !data) {
+      console.error('Invalid output tensor:', outputTensor);
+      return [];
+    }
 
+    // Adjust parsing based on shape
+    // Example: if shape is [1, N, 6], N detections with 6 attributes
+    // Or if shape is [1, 8400, 6], etc.
+    let detectionsCount = shape[1]; // typically the number of detections
+    let attrCount = shape[2]; // number of attributes per detection
+
+    const results = [];
     for (let i = 0; i < detectionsCount; i++) {
       const offset = i * attrCount;
       const [cx, cy, w, h, confidence, classId] = data.slice(offset, offset + attrCount);
