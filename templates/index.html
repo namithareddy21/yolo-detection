@@ -9,24 +9,28 @@
         *, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            min-height: 100vh; height: auto;
+            min-height: 100vh;
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
             padding: 60px 20px 40px 20px; color: #4a4a4a;
-            background: linear-gradient(135deg, #f0f4f8, #d9e2ec); position: relative;
+            background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+            position: relative;
             overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
-        body::before { content: ''; position: fixed; top: -15%; left: -20%; width: 150%; height: 140%; pointer-events: none;
+        body::before {
+            content: ''; position: fixed; top: -15%; left: -20%; width: 150%; height: 140%; pointer-events: none;
             background: radial-gradient(circle at 30% 30%, rgba(255, 206, 150, 0.4), transparent 60%),
                         radial-gradient(circle at 75% 75%, rgba(179, 206, 255, 0.3), transparent 70%),
                         radial-gradient(circle at 20% 80%, rgba(189, 243, 179, 0.25), transparent 70%);
             filter: blur(120px); z-index: -1;
         }
-        body::after { content: ''; position: fixed; inset: 0;
+        body::after {
+            content: ''; position: fixed; inset: 0;
             background: repeating-radial-gradient(circle at center, rgba(0,0,0,0.005) 0% 2px, transparent 3px 5px),
                         radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 3px);
             z-index: -1; pointer-events: none; opacity: 0.2;
         }
-        h1 { font-size: 2.8rem; font-weight: 700; color: #334e68; margin-bottom: 1rem; text-align: center;
+        h1 {
+            font-size: 2.8rem; font-weight: 700; color: #334e68; margin-bottom: 1rem; text-align: center;
             letter-spacing: 0.12em; text-transform: uppercase; text-shadow: 0 4px 12px rgba(255, 255, 255, 0.9);
         }
         .controls { text-align: center; margin-bottom: 32px; }
@@ -42,44 +46,30 @@
         }
         button:active { transform: translateY(2px) scale(0.98); box-shadow: 0 4px 12px rgba(82, 182, 154, 0.45); }
         
-        .main-content { 
+        .main-content {
             display: flex; flex-direction: row; gap: 28px; justify-content: center; align-items: flex-start;
             padding: 0 30px; width: 100%; max-width: 960px;
         }
         .box {
-            flex: 1; 
-            width: 420px;           /* ✅ FIXED WIDTH */
-            height: 420px;          /* ✅ FIXED HEIGHT */
-            min-width: 420px;       /* ✅ FIXED MIN WIDTH */
-            position: relative; 
-            border-radius: 20px; 
-            background: rgba(255, 255, 255, 0.75); 
+            flex: 1;
+            width: 420px; height: 420px; min-width: 420px;
+            position: relative;
+            border-radius: 20px; background: rgba(0, 0, 0, 1);
             border: 1.5px solid rgba(132, 196, 191, 0.7);
-            box-shadow: 0 12px 40px rgba(95, 178, 167, 0.26); 
-            backdrop-filter: blur(16px); 
-            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 12px 40px rgba(95, 178, 167, 0.26);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
             display: flex; align-items: center; justify-content: center; overflow: hidden;
-            transition: box-shadow 0.3s ease, border-color 0.3s ease; /* ✅ NO SIZE TRANSITION */
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
             touch-action: manipulation;
         }
-        .box::before {
-            content: ''; position: absolute; inset: 1.5px; border-radius: 18px;
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.6)); mix-blend-mode: screen;
-            pointer-events: none;
-        }
-        .box:hover { border-color: rgba(82, 182, 154, 0.9); }
-        video, canvas { 
-            width: 100%; 
-            height: 100%; 
-            border-radius: 18px; 
-            object-fit: cover; 
-            position: relative; 
-            z-index: 1;
-            box-shadow: 0 2px 14px rgba(82, 182, 154, 0.2); 
-            touch-action: none;
+        .box::before { content: none; } /* no overlay icon */
+
+        video, canvas {
+            width: 100%; height: 100%; border-radius: 18px;
+            object-fit: cover; position: relative; z-index: 1;
+            box-shadow: 0 2px 14px rgba(82, 182, 154, 0.2); touch-action: none;
         }
 
-        /* Results Panel */
         .results-panel {
             background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 24px; margin-top: 20px;
             border: 2px solid rgba(82, 182, 154, 0.3); box-shadow: 0 12px 40px rgba(82, 182, 154, 0.15);
@@ -105,11 +95,7 @@
 
         @media (max-width: 900px) {
             .main-content { flex-direction: column; align-items: center; gap: 20px; padding: 0 10px; }
-            .box { 
-                width: 350px;      /* ✅ FIXED MOBILE SIZE */
-                height: 350px;     /* ✅ FIXED MOBILE SIZE */
-                min-width: 350px;  /* ✅ FIXED MOBILE SIZE */
-            }
+            .box { width: 350px; height: 350px; min-width: 350px; }
             h1 { font-size: 2.2rem; letter-spacing: 0.1em; }
             body { padding: 40px 20px 40px 20px; }
         }
@@ -117,12 +103,7 @@
             body { padding-top: 30px; }
             button { margin: 4px; width: 46%; padding: 12px 20px; font-size: 1.1rem; }
             h1 { font-size: 1.8rem; }
-            .controls { margin-bottom: 24px; }
-            .box { 
-                width: 300px;      /* ✅ FIXED SMALL MOBILE */
-                height: 300px;     /* ✅ FIXED SMALL MOBILE */
-                min-width: 300px;  /* ✅ FIXED SMALL MOBILE */
-            }
+            .box { width: 300px; height: 300px; min-width: 300px; }
         }
     </style>
 </head>
@@ -134,10 +115,10 @@
     </div>
     
     <div class="main-content">
-        <div class="box input-box" id="input-cam">
+        <div class="box" id="input-cam">
             <video id="video" autoplay playsinline muted></video>
         </div>
-        <div class="box output-box" id="output-cam">
+        <div class="box" id="output-cam">
             <canvas id="canvas"></canvas>
         </div>
     </div>
@@ -157,8 +138,6 @@
         const resultsPanel = document.getElementById('resultsPanel');
         const totalCountEl = document.getElementById('totalCount');
         const objectCountsEl = document.getElementById('objectCounts');
-        const inputBox = document.getElementById('input-cam');
-        const outputBox = document.getElementById('output-cam');
 
         let stream = null;
         let running = false;
@@ -265,13 +244,13 @@
             if (!session) {
                 try {
                     session = await ort.InferenceSession.create(
-                        'static/yolov8n.onnx',
+                        'static/yolov8n.onnx',          // adjust path if needed
                         { executionProviders: ['wasm'] }
                     );
                     console.log('YOLOv8 model loaded');
                 } catch (e) {
                     console.error('Error loading YOLOv8 model:', e);
-                    alert('Model load error: ' + e.message + '\n' + JSON.stringify(e));
+                    alert('Model load error: ' + e.message);
                 }
             }
         }
@@ -300,7 +279,9 @@
                 const outputMap = await session.run({ images: inputTensor });
                 const key = Object.keys(outputMap)[0];
                 const out = outputMap[key];
-                return postprocessFlexible(out);
+                const dets = postprocessFlexible(out);
+                console.log('detections:', dets); // debug
+                return dets;
             } catch (e) {
                 console.error('Detect error:', e);
                 return [];
@@ -314,7 +295,7 @@
             const dims = out.dims;
             const data = out.data;
             const detections = [];
-            const confThreshold = 0.3;
+            const confThreshold = 0.25;
             const iouThreshold = 0.5;
 
             if (dims[1] === 84 && dims[2] === 8400) {
@@ -350,14 +331,13 @@
                 console.warn('Unexpected output shape:', dims);
             }
 
-            // Apply NMS
             const result = [];
             for (const det of detections.sort((a, b) => b.score - a.score)) {
                 if (result.every(r => iou(r, det) < iouThreshold)) {
                     result.push(det);
                 }
             }
-            return result.slice(0, 20);
+            return result.slice(0, 40);
         }
 
         function pushDet(list, cx, cy, w, h, score, classId, confThreshold) {
@@ -368,8 +348,13 @@
             const y1 = (cy - h / 2) * scaleY;
             const x2 = (cx + w / 2) * scaleX;
             const y2 = (cy + h / 2) * scaleY;
-            list.push({ x1, y1, x2, y2, label: COCO_CLASSES[classId], score,
-                widthPx: Math.round(x2 - x1), heightPx: Math.round(y2 - y1) });
+            list.push({
+                x1, y1, x2, y2,
+                label: COCO_CLASSES[classId],
+                score,
+                widthPx: Math.round(x2 - x1),
+                heightPx: Math.round(y2 - y1)
+            });
         }
 
         function iou(a, b) {
@@ -394,7 +379,7 @@
 
             objectCountsEl.innerHTML = '';
             Object.entries(objectCounts)
-                .sort(([,a], [,b]) => b - a)
+                .sort(([, a], [, b]) => b - a)
                 .forEach(([label, count]) => {
                     const item = document.createElement('div');
                     item.className = 'object-item';
@@ -416,11 +401,15 @@
             console.log('getUserMedia success,', stream.getTracks().length, 'tracks');
             video.srcObject = stream;
             await video.play();
-            
-            // ✅ FIXED CANVAS SIZE - Matches fixed box size
+
+            // ensure metadata is loaded
+            await new Promise(resolve => {
+                if (video.videoWidth) return resolve();
+                video.onloadedmetadata = () => resolve();
+            });
+
             canvas.width = 420;
             canvas.height = 420;
-            
             await initModel();
         }
 
@@ -428,27 +417,25 @@
             if (!running) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
             const detections = await detect();
-            
-            // ✅ REMOVED: No more auto-resizeBoxesToObjects()
-            
-            // Update results panel
             updateResultsPanel(detections);
 
             ctx.lineWidth = 3;
             ctx.font = '20px Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
-            detections.forEach((det) => {
+            detections.forEach(det => {
                 const { x1, y1, x2, y2, label, score, widthPx, heightPx } = det;
                 ctx.strokeStyle = 'rgba(82, 182, 154, 0.9)';
                 ctx.fillStyle = 'rgba(82, 182, 154, 0.35)';
                 ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
                 ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-                const text1 = `${label} ${score * 100 | 0}%`;
+                const text1 = `${label} ${(score * 100).toFixed(0)}%`;
                 const text2 = `${widthPx}x${heightPx}px`;
                 const textWidth1 = ctx.measureText(text1).width;
                 const textWidth2 = ctx.measureText(text2).width;
                 const textWidth = Math.max(textWidth1, textWidth2) + 10;
+
                 ctx.fillStyle = 'rgba(82, 182, 154, 0.95)';
                 ctx.fillRect(x1, y1 - 45, textWidth, 40);
                 ctx.fillStyle = '#fff';
@@ -481,7 +468,6 @@
             }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             resultsPanel.style.display = 'none';
-            // ✅ REMOVED: No box size reset needed (fixed size)
         };
     </script>
 </body>
